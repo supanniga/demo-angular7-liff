@@ -211,7 +211,7 @@ export class AppComponent implements OnInit, DoCheck {
   login() {
     this.logCallFunction('login');
     if (!liff.isLoggedIn()) {
-      liff.login({ redirectUri: 'https://compassionate-lovelace-41d286.netlify.app/' });
+      liff.login();
     }
   }
 
@@ -242,7 +242,7 @@ export class AppComponent implements OnInit, DoCheck {
     if ((compareLiffVersion.valueOf() === CompareVersion.EQUAL) || (compareLiffVersion.valueOf() === CompareVersion.GREATER_THAN)) {
 
     }
-    // liff.closeWindow();
+    liff.closeWindow();
   }
 
   getPerrmission() {
@@ -277,6 +277,7 @@ export class AppComponent implements OnInit, DoCheck {
       if (status.state === 'granted') {
         liff.getProfile().then((data) => {
           console.log(promiseOf2, data);
+          localStorage.setItem('profile', JSON.stringify(data));
           this.logThen('liff.getProfile', data);
           this.profile.displayName = data.displayName;
           this.profile.pictureUrl = data.pictureUrl;
