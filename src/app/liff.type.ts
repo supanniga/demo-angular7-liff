@@ -1,0 +1,21 @@
+import { BluetoothDevice, BluetoothRemoteGATTCharacteristic, BluetoothRemoteGATTServer, BluetoothRemoteGATTService, LIFFConfig, LIFFErrorObject, LiffInitErrorCallback, LiffInitSuccessCallback, LIFFMessages, LIFFPlugins, LIFFRequestDeviceOptions, LINEBluetoothRequestDeviceFilter } from "liff-type";
+
+let liffConfig: LIFFConfig;
+let liffErrorObject: LIFFErrorObject;
+// let LiffInitSuccessData: LiffInitSuccessData;
+let liffInitSuccessCallback: LiffInitSuccessCallback;
+let liffInitErrorCallback: LiffInitErrorCallback;
+let liffPlugins: LIFFPlugins;
+let lineBluetoothRequestDeviceFilter: LINEBluetoothRequestDeviceFilter;
+let liffRequestDeviceOptions: LIFFRequestDeviceOptions;
+let bluetoothRemoteGATTCharacteristic: BluetoothRemoteGATTCharacteristic;
+let bluetoothRemoteGATTService: BluetoothRemoteGATTService;
+let bluetoothDevice: BluetoothDevice;
+// let bluetoothRemoteGATTServer: BluetoothRemoteGATTServer;
+// let liffLoginConfig: LIFFLoginConfig;
+// let scanCodeResult: scanCodeResult;
+// let liffDecodedProfile: LiffDecodedProfile;
+// let friendship: Friendship;
+// let fiffContextData: LiffContextData;
+// let liffMessage: LIFFMessage;
+let liffMessages: LIFFMessages;

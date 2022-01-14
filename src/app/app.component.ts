@@ -1,8 +1,8 @@
 import { Component, DoCheck, OnInit } from '@angular/core';
-import liff from '@line/liff';
+import { MatSnackBar, MatSnackBarConfig } from '@angular/material/snack-bar';
 import { Config } from '@liff/types';
-import { MatSnackBar } from '@angular/material/snack-bar';
-
+import liff from '@line/liff';
+import * as semver from 'semver';
 export interface OpenWindowParams {
   url: string;
   external?: boolean;
@@ -42,6 +42,13 @@ interface LiffError {
 
 interface PermissionStatus {
   state: 'granted' | 'prompt' | 'unavailable';
+}
+
+enum CompareVersion {
+  EQUAL = 0,
+  GREATER_THAN = 1,
+  LESS_THAN = -1,
+  UNKNOWN = 99,
 }
 
 @Component({
@@ -86,15 +93,14 @@ export class AppComponent implements OnInit, DoCheck {
   lineVersion: string;
   version: string;
   context: any;
+  email: string;
 
   myPermission: any[] = [];
 
   constructor(private snackBar: MatSnackBar) {
-    // liff.initPlugins;
-    // liff.ready;
+    this.logCallFunction('constructor');
     // liff.scanCode();
     // liff.scanCodeV2();
-    // liff.sendMessages;
     // liff.subWindow;
     // liff.use;
   }
@@ -104,30 +110,46 @@ export class AppComponent implements OnInit, DoCheck {
   }
 
   ngOnInit(): void {
+    this.logCallFunction('ngOnInit');
+    this.beforeLiffInit();
     this.initLiff();
-    this.getLiffData();
+    this.afterLiffInit();
+  }
 
+  beforeLiffInit() {
+    this.logCallFunction('beforeLiffInit');
+    const promiseOf = 'liff.ready';
+    liff.ready.then((data) => {
+      this.logThen(promiseOf, data);
+    }).catch((error: Error) => {
+      this.logCatch(promiseOf, error);
+    }).finally(() => {
+      this.logFinally(promiseOf);
+    });
+    this.os = liff.getOS();
+    this.language = liff.getLanguage();
+    this.version = liff.getVersion();
+    this.lineVersion = liff.getLineVersion();
+    this.isInClient = liff.isInClient();
   }
 
   initLiff() {
-    console.log(this.liffId, 'liffId');
+    this.logCallFunction('initLiff');
     // liff.init(this.config, this.successCallback, this.errorCallback);
+    const promiseOf = 'liff.init';
     liff.init({
       liffId: this.liffId, // Use own liffId
-    }).then(() => {
-      this.idToken = liff.getIDToken();
-      console.log(liff.getIDToken(), 'idToken');
-      this.decodedIdToken = liff.getDecodedIDToken();
-      console.log(liff.getDecodedIDToken(), 'decodedIdToken');
+    }).then((data) => {
+      this.logThen(promiseOf, data);
     }).catch((error: Error | LiffError) => {
-      this.logError('initLiff', error);
+      this.logCatch(promiseOf, error);
     }).finally(() => {
-
+      this.logFinally(promiseOf);
     });
     if (liff.isLoggedIn()) {
       this.getProfile();
     } else {
-      this.login();
+      // this.login();
     }
   }
 
@@ -139,22 +161,18 @@ export class AppComponent implements OnInit, DoCheck {
     console.log(888, error);
   }
 
-  getLiffData() {
-    this.snackBar.open('getAll', 'x', { duration: 500 })
+  afterLiffInit() {
+    this.logCallFunction('afterLiffInit');
     this.isLoggedIn = liff.isLoggedIn();
-    this.isInClient = liff.isInClient();
     this.isSubWindow = liff.isSubWindow();
     this.id = liff.id;
     this.aId = liff.getAId();
     this.accessToken = liff.getAccessToken();
     this.idToken = liff.getIDToken();
     this.decodedIdToken = liff.getDecodedIDToken();
-    this.os = liff.getOS();
-    this.language = liff.getLanguage();
     this.isVideoAutoPlay = liff.getIsVideoAutoPlay();
-    this.lineVersion = liff.getLineVersion();
-    this.version = liff.getVersion();
     this.context = liff.getContext();
+    // this.email = this.decodedIdToken.email;
     this.obj = {
       'isLoggedIn': this.isLoggedIn,
       'isInClient': this.isInClient,
@@ -170,104 +188,130 @@ export class AppComponent implements OnInit, DoCheck {
       'lineVersion': this.lineVersion,
       'version': this.version,
       'context': this.context,
+      // 'email': this.email
+    }
+  }
+
+  compareVersion(version1: string, version2: string): CompareVersion {
+    const result: -1 | 0 | 1 = semver.compare(version1, version2);
+    if (result === 0) {
+      console.log(`${version1} == ${version2}`, CompareVersion.EQUAL.valueOf());
+      return CompareVersion.EQUAL;
+    } else if (result === 1) {
+      console.log(`${version1} > ${version2}`, CompareVersion.GREATER_THAN.valueOf());
+      return CompareVersion.GREATER_THAN;
+    } else if (result === -1) {
+      console.log(`${version1} < ${version2}`, CompareVersion.LESS_THAN.valueOf());
+      return CompareVersion.LESS_THAN;
+    } else {
+      return CompareVersion.UNKNOWN;
     }
   }
 
   login() {
+    this.logCallFunction('login');
     if (!liff.isLoggedIn()) {
-      liff.login();
+      liff.login({ redirectUri: 'https://compassionate-lovelace-41d286.netlify.app/' });
     }
   }
 
   logout(): void {
+    this.logCallFunction('logout');
     if (liff.isLoggedIn()) {
       liff.logout();
-      location.reload();
+      window.location.reload();
     }
   }
 
   // OpenWindowParams
-  openWindow(): void {
+  openWindow(url: string, isExternal: boolean): void {
+    this.logCallFunction('openWindow');
     const params: OpenWindowParams = {
-      url: "https://line.me",
-      external: true,
+      url: url,
+      external: isExternal,
     }
     liff.openWindow(params);
   }
 
   closeWindow(): void {
-    liff.closeWindow();
+    this.logCallFunction('closeWindow');
+    const compareLiffVersion: CompareVersion = this.compareVersion(this.version, '2.4.0');
+    const compareLineVersion: CompareVersion = this.compareVersion(this.lineVersion, '10.15.0');
+    console.log(compareLiffVersion);
+    console.log(compareLineVersion);
+    if ((compareLiffVersion.valueOf() === CompareVersion.EQUAL) || (compareLiffVersion.valueOf() === CompareVersion.GREATER_THAN)) {
+
+    }
+    // liff.closeWindow();
   }
 
   getPerrmission() {
+    this.logCallFunction('getPerrmission');
     const permissions: Permission[] = ['profile', 'chat_message.write', 'openid', 'email'];
     permissions.forEach((permission) => {
+      const promiseOf = 'liff.permission.query.profile';
       liff.permission.query('profile').then((permissionStatus: PermissionStatus) => {
         console.log(permission, permissionStatus.state);
+        this.logThen(promiseOf, permissionStatus);
         if (permissionStatus.state === 'granted') {
         } else if (permissionStatus.state === 'prompt') {
+          liff.permission.requestAll();
         } else if (permissionStatus.state === 'unavailable') {
         }
       }).catch((error: Error | LiffError) => {
-        this.logError('getPerrmission', error);
+        this.logCatch(promiseOf, error);
       }).finally(() => {
-
+        this.logFinally(promiseOf);
       });
-    });
-
-    liff.permission.query('profile').then((permissionStatus: PermissionStatus) => {
-      const state = permissionStatus.state;
-      if (state === 'prompt') {
-        liff.permission.requestAll();
-      }
     });
   }
 
 
   // Promise<Profile>
   getProfile(): void {
+    this.logCallFunction('getProfile');
+    const promisOf = 'liff.permission.query.profile'
     liff.permission.query('profile').then((status) => {
+      this.logThen(promisOf, status);
+      const promiseOf2 = 'liff.getProfile';
       if (status.state === 'granted') {
         liff.getProfile().then((data) => {
-          console.log('getProfile: ', data);
+          console.log(promiseOf2, data);
+          this.logThen('liff.getProfile', data);
           this.profile.displayName = data.displayName;
           this.profile.pictureUrl = data.pictureUrl;
           this.profile.statusMessage = data.statusMessage;
           this.profile.userId = data.userId;
         }).catch((error: Error | LiffError) => {
-          this.logError('getProfile', error);
+          this.logCatch(promiseOf2, error);
         }).finally(() => {
-          console.log('getProfile complete');
+          this.logFinally(promiseOf2);
         });
       } else if (status.state === 'prompt') {
         liff.permission.requestAll();
       }
     }).catch((error) => {
-      this.logError('getProfilePermission', error);
+      this.logCatch(promisOf, error);
     }).finally(() => {
-
+      this.logFinally(promisOf);
     });
   }
 
   // Promise<Friendship>
   getFriendship(): void {
-    liff.getFriendship().then(data => {
+    this.logCallFunction('getFriendship');
+    const promiseOf = 'liff.getFriendship';
+    liff.getFriendship().then((data) => {
+      this.logThen(promiseOf, data);
+      this.friendship.friendFlag = data.friendFlag;
       if (data.friendFlag) {
         // something you want to do
       }
-    });
-    liff.getFriendship().then((data) => {
-      console.log('getFriendship: ', data);
-      this.friendship.friendFlag = data.friendFlag;
-      if (data.friendFlag) {
-
-      }
     }).catch((error: Error | LiffError) => {
-      this.logError('getFriendship', error);
+      this.logCatch(promiseOf, error);
     }).finally(() => {
-      console.error('getFriendship complete');
+      this.logFinally(promiseOf);
     });
-
   }
 
 
@@ -308,7 +352,7 @@ export class AppComponent implements OnInit, DoCheck {
     // myLink equals "https://liff.line.me/1234567890-AbcdEfgh/food?menu=pizza&user_tracking_id=8888"
   }
 
-  initPlugins() {
+  initLiffPlugins() {
     liff.initPlugins(['bluetooth']).then(() => {
       // liffCheckAvailablityAndDo(() => liffRequestDevice());
     }).catch(error => {
@@ -325,7 +369,9 @@ export class AppComponent implements OnInit, DoCheck {
     ]).then(() => {
       console.log('message sent');
     }).catch((error: Error | LiffError) => {
-      this.logError('sendMessages', error);
+      this.logCatch('sendMessages', error);
+    }).finally(() => {
+      this.logFinally('sendMessages');
     });
   }
 
@@ -345,7 +391,7 @@ export class AppComponent implements OnInit, DoCheck {
       ]).then(() => {
         console.log("ShareTargetPicker was launched");
       }).catch((error: Error | LiffError) => {
-        this.logError('ShareTargetPicker', error);
+        this.logCatch('ShareTargetPicker', error);
       });
     }
     // Check if multiple liff transtion feature is available
@@ -368,13 +414,33 @@ export class AppComponent implements OnInit, DoCheck {
     }
   }
 
-  logError(name: string, error: Error | LiffError) {
-    console.error(`error ${name}`, error);
+  openSnackBar(message: string, action: string) {
+    const config: MatSnackBarConfig = {
+      horizontalPosition: 'center',
+      verticalPosition: 'top'
+    };
+    this.snackBar.open(message, action, config);
+  }
+
+  logCallFunction(name: string) {
+    console.log('🚀call', name);
+  }
+
+  logThen(name: string, data?: any) {
+    console.log('⏳then', name, data);
+  }
+
+  logCatch(name: string, error: Error | LiffError) {
+    console.error(`🛑error ${name}`, error);
     if (error instanceof Error) {
-      this.snackBar.open(`${error.name} ${name} : ${error.message}`, 'x');
+      this.openSnackBar(`${error.name} ${name} : ${error.message}`, 'x');
     } else {
-      this.snackBar.open(`${error.code} ${name} : ${error.message}`, 'x');
+      this.openSnackBar(`${error.code} ${name} : ${error.message}`, 'x');
     }
+  }
+
+  logFinally(name: string) {
+    console.log('🎉finally', name);
   }
 
   // // OS

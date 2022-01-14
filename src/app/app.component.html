@@ -2,13 +2,18 @@
   <mat-card>
     <div class="row">
       <div class="col-12">
-        <!-- <button mat-flat-button color="primary" (click)="login()">loggin</button> -->
+        <button mat-flat-button color="primary" (click)="login()">loggin</button>
         <button mat-flat-button color="primary" (click)="logout()">logout</button>
-        <button mat-flat-button color="primary" (click)="openWindow()">open window</button>
+        <button mat-flat-button color="primary" (click)="openWindow('https://www.google.com/', true)">
+          open google external
+        </button>
+        <button mat-flat-button color="primary" (click)="openWindow('https://www.google.com/', false)">
+          open google internal
+        </button>
         <button mat-flat-button color="primary" (click)="closeWindow()">close window</button>
         <button mat-flat-button color="primary" (click)="getProfile()">get profile</button>
         <button mat-flat-button color="primary" (click)="getFriendship()">get friendship</button>
-        <button mat-flat-button color="primary" (click)="getLiffData()">get liff data</button>
+        <button mat-flat-button color="primary" (click)="afterLiffInit()">get liff data</button>
       </div>
     </div>
 
