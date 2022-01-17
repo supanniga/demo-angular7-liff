@@ -96,6 +96,7 @@ export class AppComponent implements OnInit, DoCheck {
   email: string;
 
   myPermission: any[] = [];
+  permissions: Permission[] = ['profile', 'chat_message.write', 'openid', 'email'];
 
   constructor(private snackBar: MatSnackBar) {
     this.logCallFunction('constructor');
@@ -118,7 +119,7 @@ export class AppComponent implements OnInit, DoCheck {
 
   beforeLiffInit() {
     this.logCallFunction('beforeLiffInit');
-    const promiseOf = 'liff.ready';
+    const promiseOf = 'ready';
     liff.ready.then((data) => {
       this.logThen(promiseOf, data);
     }).catch((error: Error) => {
@@ -136,7 +137,7 @@ export class AppComponent implements OnInit, DoCheck {
   initLiff() {
     this.logCallFunction('initLiff');
     // liff.init(this.config, this.successCallback, this.errorCallback);
-    const promiseOf = 'liff.init';
+    const promiseOf = 'init';
     liff.init({
       liffId: this.liffId, // Use own liffId
     }).then((data) => {
@@ -146,10 +147,12 @@ export class AppComponent implements OnInit, DoCheck {
     }).finally(() => {
       this.logFinally(promiseOf);
     });
+
     if (liff.isLoggedIn()) {
-      this.getProfile();
+      this.getPerrmission();
     } else {
       // this.login();
+
     }
   }
 
@@ -247,16 +250,103 @@ export class AppComponent implements OnInit, DoCheck {
 
   getPerrmission() {
     this.logCallFunction('getPerrmission');
-    const permissions: Permission[] = ['profile', 'chat_message.write', 'openid', 'email'];
-    permissions.forEach((permission) => {
-      const promiseOf = 'liff.permission.query.profile';
-      liff.permission.query('profile').then((permissionStatus: PermissionStatus) => {
-        console.log(permission, permissionStatus.state);
-        this.logThen(promiseOf, permissionStatus);
-        if (permissionStatus.state === 'granted') {
-        } else if (permissionStatus.state === 'prompt') {
-          liff.permission.requestAll();
-        } else if (permissionStatus.state === 'unavailable') {
+    this.permissions.forEach((permission) => {
+      const promiseOf = `permission.${permission}`;
+      liff.permission.query(permission).then((permissionStatus: PermissionStatus) => {
+        console.log(permission, permissionStatus);
+        this.myPermission.push({
+          permission: permission,
+          permissionStatusState: permissionStatus.state,
+        });
+        switch (permission) {
+          case 'profile': {
+            switch (permissionStatus.state) {
+              case 'granted': {
+                this.getProfile();
+                break;
+              }
+              case 'prompt': {
+                liff.permission.requestAll();
+                break;
+              }
+              case 'unavailable': {
+                //statements; 
+                break;
+              }
+              default: {
+                //statements; 
+                break;
+              }
+            }
+            break;
+          }
+          case 'openid': {
+            switch (permissionStatus.state) {
+              case 'granted': {
+                //statements; 
+                break;
+              }
+              case 'prompt': {
+                //statements; 
+                break;
+              }
+              case 'unavailable': {
+                //statements; 
+                break;
+              }
+              default: {
+                //statements; 
+                break;
+              }
+            }
+            break;
+          }
+          case 'email': {
+            switch (permissionStatus.state) {
+              case 'granted': {
+                //statements; 
+                break;
+              }
+              case 'prompt': {
+                //statements; 
+                break;
+              }
+              case 'unavailable': {
+                //statements; 
+                break;
+              }
+              default: {
+                //statements; 
+                break;
+              }
+            }
+            break;
+          }
+          case 'chat_message.write': {
+            switch (permissionStatus.state) {
+              case 'granted': {
+                //statements; 
+                break;
+              }
+              case 'prompt': {
+                //statements; 
+                break;
+              }
+              case 'unavailable': {
+                //statements; 
+                break;
+              }
+              default: {
+                //statements; 
+                break;
+              }
+            }
+            break;
+          }
+          default: {
+            //statements; 
+            break;
+          }
         }
       }).catch((error: Error | LiffError) => {
         this.logCatch(promiseOf, error);
@@ -270,38 +360,29 @@ export class AppComponent implements OnInit, DoCheck {
   // Promise<Profile>
   getProfile(): void {
     this.logCallFunction('getProfile');
-    const promisOf = 'liff.permission.query.profile'
-    liff.permission.query('profile').then((status) => {
-      this.logThen(promisOf, status);
-      const promiseOf2 = 'liff.getProfile';
-      if (status.state === 'granted') {
-        liff.getProfile().then((data) => {
-          console.log(promiseOf2, data);
-          localStorage.setItem('profile', JSON.stringify(data));
-          this.logThen('liff.getProfile', data);
-          this.profile.displayName = data.displayName;
-          this.profile.pictureUrl = data.pictureUrl;
-          this.profile.statusMessage = data.statusMessage;
-          this.profile.userId = data.userId;
-        }).catch((error: Error | LiffError) => {
-          this.logCatch(promiseOf2, error);
-        }).finally(() => {
-          this.logFinally(promiseOf2);
-        });
-      } else if (status.state === 'prompt') {
-        liff.permission.requestAll();
-      }
-    }).catch((error) => {
+    const promisOf = 'getProfile'
+    liff.getProfile().then((data) => {
+      this.logThen(promisOf, data);
+      localStorage.setItem('profile', JSON.stringify(data));
+      this.setProfile(data);
+    }).catch((error: Error | LiffError) => {
       this.logCatch(promisOf, error);
     }).finally(() => {
       this.logFinally(promisOf);
     });
   }
 
+  setProfile(data: Profile) {
+    this.profile.displayName = data.displayName;
+    this.profile.pictureUrl = data.pictureUrl;
+    this.profile.statusMessage = data.statusMessage;
+    this.profile.userId = data.userId;
+  }
+
   // Promise<Friendship>
   getFriendship(): void {
     this.logCallFunction('getFriendship');
-    const promiseOf = 'liff.getFriendship';
+    const promiseOf = 'getFriendship';
     liff.getFriendship().then((data) => {
       this.logThen(promiseOf, data);
       this.friendship.friendFlag = data.friendFlag;
@@ -362,17 +443,18 @@ export class AppComponent implements OnInit, DoCheck {
   }
 
   sendMessages() {
+    const promiseOf = 'sendMessages';
     liff.sendMessages([
       {
         type: 'text',
         text: 'Hello, World!'
       }
-    ]).then(() => {
-      console.log('message sent');
+    ]).then((data) => {
+      this.logThen(promiseOf, data);
     }).catch((error: Error | LiffError) => {
-      this.logCatch('sendMessages', error);
+      this.logCatch(promiseOf, error);
     }).finally(() => {
-      this.logFinally('sendMessages');
+      this.logFinally(promiseOf);
     });
   }
 
@@ -381,25 +463,33 @@ export class AppComponent implements OnInit, DoCheck {
   }
 
   isApiAvailable(): boolean {
-    // Check if shareTargetPicker is available
+    this.isShareTargetPickerApiAvailable();
+    this.isMultipleLiffTransitionApiAvailable();
+    return null;
+  }
 
+  isShareTargetPickerApiAvailable(): any {
+    const promiseOf = 'shareTargetPicker';
     if (liff.isApiAvailable('shareTargetPicker')) {
       liff.shareTargetPicker([
         {
           type: "text",
           text: "Hello, World!"
         }
-      ]).then(() => {
-        console.log("ShareTargetPicker was launched");
+      ]).then((data) => {
+        this.logThen(promiseOf, data);
+        return data;
       }).catch((error: Error | LiffError) => {
-        this.logCatch('ShareTargetPicker', error);
+        this.logCatch(promiseOf, error);
       });
     }
-    // Check if multiple liff transtion feature is available
+  }
+
+  isMultipleLiffTransitionApiAvailable(): any {
+    const promiseOf = 'multipleLiffTransition';
     if (liff.isApiAvailable('multipleLiffTransition')) {
       window.location.href = `https://line.me/${this.liffId}`;
     }
-    return null;
   }
 
   getApi() {
@@ -428,7 +518,7 @@ export class AppComponent implements OnInit, DoCheck {
   }
 
   logThen(name: string, data?: any) {
-    console.log('⏳then', name, data);
+    console.log('💎then', name, data);
   }
 
   logCatch(name: string, error: Error | LiffError) {
