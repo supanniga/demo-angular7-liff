@@ -1,33 +1,99 @@
+<mat-toolbar color="primary">
+  <span>
+    <button mat-button [matMenuTriggerFor]="menu1">Module1</button>
+    <mat-menu #menu1="matMenu">
+      <button mat-menu-item routerLink="/module1/page1">Page 1</button>
+      <button mat-menu-item routerLink="/module1/page2">Page 2</button>
+    </mat-menu>
+  </span>
+  <span>
+    <button mat-button [matMenuTriggerFor]="menu2">Module2</button>
+    <mat-menu #menu2="matMenu">
+      <button mat-menu-item routerLink="/module2/page3">Page 3</button>
+      <button mat-menu-item routerLink="/module2/page4">Page 4</button>
+    </mat-menu>
+  </span>
+
+  <span class="example-fill-remaining-space"></span>
+  <span>
+    <mat-menu #appMenu="matMenu">
+      <button mat-menu-item>Settings</button>
+      <button mat-menu-item>Help</button>
+    </mat-menu>
+
+    <button mat-icon-button [matMenuTriggerFor]="appMenu">
+      <mat-icon>more_vert</mat-icon>
+    </button>
+  </span>
+</mat-toolbar>
+
+<router-outlet></router-outlet>
+
 <div class="container-fluid my-3">
   <mat-card>
     <div class="row">
-      <div class="col-12">
-        <button mat-flat-button color="accent" (click)="login()">loggin</button>
-        <button mat-flat-button color="primary" (click)="openWindow('https://www.google.com/', true)">
-          open google external
-        </button>
-        <button mat-flat-button color="primary" (click)="openWindow('https://www.google.com/', false)">
-          open google internal
-        </button>
-        <button mat-flat-button color="primary" (click)="closeWindow()">close window</button>
-        <button mat-flat-button color="primary" (click)="getProfile()">get profile</button>
-        <button mat-flat-button color="primary" (click)="getFriendship()">get friendship</button>
+      <div class="col-12 my-3">
+        <button mat-flat-button color="accent" (click)="login()">login</button>
+        <button mat-flat-button color="accent" (click)="logout()">logout</button>
+        <button mat-button [matMenuTriggerFor]="windowMenu">Window Menu</button>
+        <mat-menu #windowMenu="matMenu">
+          <button mat-menu-item color="primary" (click)="openWindow('https://www.google.com/', true)">
+            open google external
+          </button>
+          <button mat-menu-item color="primary" (click)="openWindow('https://www.google.com/', false)">
+            open google internal
+          </button>
+          <button mat-menu-item color="primary" (click)="closeWindow()">close window</button>
+        </mat-menu>
         <button mat-flat-button color="primary" (click)="afterLiffInit()">get liff data</button>
+      </div>
+      <div class="d-flex flex-column mb-2">
+        <button mat-flat-button color="primary" (click)="getProfileFromLocal(template)">get profile from localstorage</button>
+        <button mat-flat-button color="primary" (click)="setLocalStorage()">set localstorage</button>
+        <button mat-flat-button color="primary" (click)="getLocalStorage(template)">get localstorage</button>
+        <button mat-flat-button color="primary" (click)="clearLocalStorage()">clear localstorage</button>
+      </div>
+      <div class="d-flex flex-column mb-2">
+        <button mat-flat-button color="warn" (click)="setSessionStorage()">set sessionstorage</button>
+        <button mat-flat-button color="warn" (click)="getSesstionStorage(template)">get sessionstorage</button>
+        <button mat-flat-button color="warn" (click)="clearSessionStorage()">clear sessionstorage</button>
+      </div>
+      <div class="d-flex flex-column mb-2">
+        <button mat-flat-button color="accent" (click)="setCookie()">set cookie</button>
+        <button mat-flat-button color="accent" (click)="getCookie(template)">get cookie</button>
+        <button mat-flat-button color="accent" (click)="clearCookie()">clear cookie</button>
       </div>
     </div>
 
     <div class="card m-3 p-2">
+      <div class="text-end">
+        <button mat-flat-button color="primary" (click)="getProfile()">
+          get profile
+        </button>
+      </div>
       <pre>{{ 'profile' + ' : ' +  (profile | json)}}</pre>
     </div>
     <div class="card m-3 p-2">
+      <div class="text-end">
+        <button mat-flat-button color="primary" (click)="getFriendship()">
+          get friendship
+        </button>
+      </div>
       <pre>{{ 'friendship' + ' : ' +  (friendship | json)}}</pre>
     </div>
+
     <div class="card m-3 p-2">
       <pre>{{ 'permission' + ' : ' +  (myPermission | json)}}</pre>
     </div>
-    <div *ngFor="let data of obj | keyvalue" class="card m-3 p-2">
+    <div *ngFor="let data of beforeInitData | keyvalue" class="card m-3 p-2 bg-warning">
+      <pre>{{ data.key + ' : ' +  (data.value | json)}}</pre>
+    </div>
+    <div *ngFor="let data of afterInitData | keyvalue" class="card m-3 p-2 bg-danger">
       <pre>{{ data.key + ' : ' +  (data.value | json)}}</pre>
     </div>
   </mat-card>
 </div>
-<router-outlet></router-outlet>
+
+<ng-template #template>
+  <pre>{{showData | json}}</pre>
+</ng-template>

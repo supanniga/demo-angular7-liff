@@ -1,55 +1,13 @@
-import { Component, DoCheck, OnInit } from '@angular/core';
+import { Component, DoCheck, OnInit, TemplateRef } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarConfig } from '@angular/material/snack-bar';
 import { Config } from '@liff/types';
 import liff from '@line/liff';
+import { CookieService } from 'ngx-cookie-service';
+import { ToastrService } from 'ngx-toastr';
+import { Observable, Subject, Subscription } from 'rxjs';
 import * as semver from 'semver';
-export interface OpenWindowParams {
-  url: string;
-  external?: boolean;
-}
-
-interface Friendship {
-  friendFlag: boolean;
-}
-
-interface Profile {
-  userId: string;
-  displayName: string;
-  pictureUrl?: string;
-  statusMessage?: string;
-}
-
-interface JWTPayload {
-  iss?: string;
-  sub?: string;
-  aud?: string;
-  exp?: number;
-  iat?: number;
-  auth_time?: number;
-  nonce?: string;
-  amr?: string[];
-  name?: string;
-  picture?: string;
-  email?: string;
-}
-
-export type Permission = 'profile' | 'chat_message.write' | 'openid' | 'email';
-
-interface LiffError {
-  code: string;
-  message: string;
-}
-
-interface PermissionStatus {
-  state: 'granted' | 'prompt' | 'unavailable';
-}
-
-enum CompareVersion {
-  EQUAL = 0,
-  GREATER_THAN = 1,
-  LESS_THAN = -1,
-  UNKNOWN = 99,
-}
+import { CompareVersion, Friendship, JWTPayload, LiffError, OpenWindowParams, Permission, PermissionStatus, PERMISSION_NAMES, Profile, ProfilePlusInterface } from './shared/services/liff/liff';
 
 @Component({
   selector: 'app-root',
@@ -96,9 +54,23 @@ export class AppComponent implements OnInit, DoCheck {
   email: string;
 
   myPermission: any[] = [];
-  permissions: Permission[] = ['profile', 'chat_message.write', 'openid', 'email'];
 
-  constructor(private snackBar: MatSnackBar) {
+  showData: any;
+
+  beforeInitData: {} = {};
+  afterInitData: {} = {};
+
+  profileObs = new Observable<Profile>(null);
+  profileSub = this.profileObs.subscribe();
+  profileSubject = new Subject();
+
+
+  constructor(
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog,
+    private cookieService: CookieService,
+    private toastr: ToastrService
+  ) {
     this.logCallFunction('constructor');
     // liff.scanCode();
     // liff.scanCodeV2();
@@ -111,6 +83,10 @@ export class AppComponent implements OnInit, DoCheck {
   }
 
   ngOnInit(): void {
+    // this.profileSubject.subscribe(data => {
+    //   console.log(data);
+    //   this.toastr.success(JSON.stringify(data));
+    // })
     this.logCallFunction('ngOnInit');
     this.beforeLiffInit();
     this.initLiff();
@@ -120,6 +96,7 @@ export class AppComponent implements OnInit, DoCheck {
   beforeLiffInit() {
     this.logCallFunction('beforeLiffInit');
     const promiseOf = 'ready';
+
     liff.ready.then((data) => {
       this.logThen(promiseOf, data);
     }).catch((error: Error) => {
@@ -132,6 +109,13 @@ export class AppComponent implements OnInit, DoCheck {
     this.version = liff.getVersion();
     this.lineVersion = liff.getLineVersion();
     this.isInClient = liff.isInClient();
+
+    this.beforeInitData = {
+      'os': this.os,
+      'language': this.language,
+      'version': this.version,
+      'isInClient': this.isInClient,
+    }
   }
 
   initLiff() {
@@ -146,14 +130,17 @@ export class AppComponent implements OnInit, DoCheck {
       this.logCatch(promiseOf, error);
     }).finally(() => {
       this.logFinally(promiseOf);
+
+      if (liff.isLoggedIn()) {
+        this.toastr.success(`isLoggedIn: ${liff.isLoggedIn()}`)
+        this.getPerrmission();
+      } else {
+        this.toastr.error(`isLoggedIn: ${liff.isLoggedIn()}`)
+        // this.login();
+      }
     });
 
-    if (liff.isLoggedIn()) {
-      this.getPerrmission();
-    } else {
-      // this.login();
 
-    }
   }
 
   successCallback(): void {
@@ -175,23 +162,16 @@ export class AppComponent implements OnInit, DoCheck {
     this.decodedIdToken = liff.getDecodedIDToken();
     this.isVideoAutoPlay = liff.getIsVideoAutoPlay();
     this.context = liff.getContext();
-    // this.email = this.decodedIdToken.email;
-    this.obj = {
-      'isLoggedIn': this.isLoggedIn,
-      'isInClient': this.isInClient,
-      'isSubWindow': this.isSubWindow,
+    this.afterInitData = {
       'id': this.id,
       'aId': this.aId,
-      'accessToken': this.accessToken,
       'idToken': this.idToken,
+      'isLoggedIn': this.isLoggedIn,
+      'isSubWindow': this.isSubWindow,
+      'accessToken': this.accessToken,
       'decodedIdToken': this.decodedIdToken,
-      'os': this.os,
-      'language': this.language,
       'isVideoAutoPlay': this.isVideoAutoPlay,
-      'lineVersion': this.lineVersion,
-      'version': this.version,
       'context': this.context,
-      // 'email': this.email
     }
   }
 
@@ -215,6 +195,8 @@ export class AppComponent implements OnInit, DoCheck {
     this.logCallFunction('login');
     if (!liff.isLoggedIn()) {
       liff.login();
+    } else {
+      this.openSnackBar('You already logged in');
     }
   }
 
@@ -223,6 +205,8 @@ export class AppComponent implements OnInit, DoCheck {
     if (liff.isLoggedIn()) {
       liff.logout();
       window.location.reload();
+    } else {
+      this.openSnackBar('How can you logout without login');
     }
   }
 
@@ -238,31 +222,25 @@ export class AppComponent implements OnInit, DoCheck {
 
   closeWindow(): void {
     this.logCallFunction('closeWindow');
-    const compareLiffVersion: CompareVersion = this.compareVersion(this.version, '2.4.0');
-    const compareLineVersion: CompareVersion = this.compareVersion(this.lineVersion, '10.15.0');
-    console.log(compareLiffVersion);
-    console.log(compareLineVersion);
-    if ((compareLiffVersion.valueOf() === CompareVersion.EQUAL) || (compareLiffVersion.valueOf() === CompareVersion.GREATER_THAN)) {
-
-    }
     liff.closeWindow();
   }
 
   getPerrmission() {
     this.logCallFunction('getPerrmission');
-    this.permissions.forEach((permission) => {
+    PERMISSION_NAMES.forEach((permission: Permission) => {
       const promiseOf = `permission.${permission}`;
       liff.permission.query(permission).then((permissionStatus: PermissionStatus) => {
         console.log(permission, permissionStatus);
         this.myPermission.push({
           permission: permission,
-          permissionStatusState: permissionStatus.state,
+          state: permissionStatus.state,
         });
         switch (permission) {
           case 'profile': {
             switch (permissionStatus.state) {
               case 'granted': {
                 this.getProfile();
+                this.afterLiffInit();
                 break;
               }
               case 'prompt': {
@@ -287,7 +265,7 @@ export class AppComponent implements OnInit, DoCheck {
                 break;
               }
               case 'prompt': {
-                //statements; 
+                liff.permission.requestAll();
                 break;
               }
               case 'unavailable': {
@@ -308,7 +286,7 @@ export class AppComponent implements OnInit, DoCheck {
                 break;
               }
               case 'prompt': {
-                //statements; 
+                liff.permission.requestAll();
                 break;
               }
               case 'unavailable': {
@@ -372,11 +350,17 @@ export class AppComponent implements OnInit, DoCheck {
     });
   }
 
+  getProfilePlus(): ProfilePlusInterface {
+    return liff.getProfilePlus();
+  }
+
   setProfile(data: Profile) {
     this.profile.displayName = data.displayName;
     this.profile.pictureUrl = data.pictureUrl;
     this.profile.statusMessage = data.statusMessage;
     this.profile.userId = data.userId;
+    this.profileSubject.next(this.profile);
+
   }
 
   // Promise<Friendship>
@@ -505,23 +489,23 @@ export class AppComponent implements OnInit, DoCheck {
     }
   }
 
-  openSnackBar(message: string, action: string) {
+  openSnackBar(message: string, action?: string): void {
     const config: MatSnackBarConfig = {
       horizontalPosition: 'center',
       verticalPosition: 'top'
     };
-    this.snackBar.open(message, action, config);
+    this.snackBar.open(message, action || 'x', config);
   }
 
-  logCallFunction(name: string) {
+  logCallFunction(name: string): void {
     console.log('🚀call', name);
   }
 
-  logThen(name: string, data?: any) {
+  logThen(name: string, data?: any): void {
     console.log('💎then', name, data);
   }
 
-  logCatch(name: string, error: Error | LiffError) {
+  logCatch(name: string, error: Error | LiffError): void {
     console.error(`🛑error ${name}`, error);
     if (error instanceof Error) {
       this.openSnackBar(`${error.name} ${name} : ${error.message}`, 'x');
@@ -530,75 +514,70 @@ export class AppComponent implements OnInit, DoCheck {
     }
   }
 
-  logFinally(name: string) {
+  logFinally(name: string): void {
     console.log('🎉finally', name);
   }
 
-  // // OS
-  // getOS(): any {
-  //   return liff.getOS()
+  setLocalStorage(): void {
+    this.openSnackBar('setLocalStorage');
+    localStorage.setItem('accessToken', JSON.stringify('accessToken'));
+  }
+
+  getLocalStorage(templateRef: TemplateRef<any>): string {
+    this.showData = JSON.parse(localStorage.getItem('accessToken'));
+    this.dialog.open(templateRef);
+    return localStorage.getItem('accessToken');
+  }
+
+  getProfileFromLocal(templateRef: TemplateRef<any>): string {
+    this.showData = JSON.parse(localStorage.getItem('profile'));
+    this.dialog.open(templateRef);
+    return localStorage.getItem('profile');
+  }
+
+  clearLocalStorage(): void {
+    this.openSnackBar('clearLocalStorage');
+    localStorage.clear();
+  }
+
+  setSessionStorage(): void {
+    this.openSnackBar('setSessionStorage');
+    sessionStorage.setItem('session', JSON.stringify(this.profile));
+  }
+
+  getSesstionStorage(templateRef: TemplateRef<any>): string {
+    this.showData = JSON.parse(sessionStorage.getItem('session'));
+    this.dialog.open(templateRef);
+    return sessionStorage.getItem('session');
+  }
+
+  clearSessionStorage(): void {
+    this.openSnackBar('clearSessionStorage');
+    sessionStorage.clear();
+  }
+
+  setCookie(): void {
+    this.openSnackBar('setCookie');
+    this.cookieService.set('Test', 'Hello World');
+  }
+
+  getCookie(templateRef: TemplateRef<any>): string {
+    this.showData = this.cookieService.get('Test');
+    this.dialog.open(templateRef);
+    return this.cookieService.get('Test');
+  }
+
+  clearCookie(): void {
+    this.openSnackBar('clearCookie');
+    this.cookieService.deleteAll();
+  }
+
+  // const compareLiffVersion: CompareVersion = this.compareVersion(this.version, '2.4.0');
+  // const compareLineVersion: CompareVersion = this.compareVersion(this.lineVersion, '10.15.0');
+  // console.log(compareLiffVersion);
+  // console.log(compareLineVersion);
+  // if ((compareLiffVersion.valueOf() === CompareVersion.EQUAL) || (compareLiffVersion.valueOf() === CompareVersion.GREATER_THAN)) {
+
   // }
-
-  // getLanguage(): string {
-  //   return liff.getLanguage();
-  // }
-
-  // // AIdInterface | undefined
-  // getAId(): any | undefined {
-  //   return liff.getAId();
-  // }
-
-  // getAccessToken(): string {
-  //   return liff.getAccessToken();
-  // }
-
-  // // Context | null
-  // getContext(): any | null {
-  //   this.context = liff.getContext();
-  //   return liff.getContext();
-  // }
-
-  // // JWTPayload | null
-  // getDecodedIDToken(): any | null {
-  //   return liff.getDecodedIDToken();
-  // }
-
-  // getIDToken(): string {
-  //   return liff.getIDToken();
-  // }
-
-  // getIsVideoAutoPlay(): boolean {
-  //   return liff.getIsVideoAutoPlay();
-  // }
-
-  // getLineVersion(): string {
-  //   return liff.getLineVersion();
-  // }
-
-  // getProfilePlus() {
-  //   return liff.getProfilePlus();
-  // }
-
-  // getVersion(): string {
-  //   return liff.getVersion();
-  // }
-
-  // getId(): string {
-  //   return liff.id;
-  // }
-
-
-  // getIsInClient(): boolean {
-  //   return liff.isInClient();
-  // }
-
-  // getIsLoggedIn(): boolean {
-  //   return liff.isLoggedIn();
-  // }
-
-  // getIsSubWindow(): boolean {
-  //   return liff.isSubWindow();
-  // }
-
 
 }
